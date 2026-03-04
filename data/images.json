@@ -1,0 +1,82 @@
+{
+  "atmos-2": {
+    "hero": "/shoes/atmos-2.jpg",
+    "alt": "Topo Athletic Atmos 2 running shoe"
+  },
+  "ultrafly-6": {
+    "hero": "/shoes/ultrafly-6.jpg",
+    "alt": "Topo Athletic Ultrafly 6 running shoe"
+  },
+  "ultraventure-4": {
+    "hero": "/shoes/ultraventure-4.jpg",
+    "alt": "Topo Athletic Ultraventure 4 trail shoe"
+  },
+  "mtn-racer-4": {
+    "hero": "/shoes/mtn-racer-4.jpg",
+    "alt": "Topo Athletic MTN Racer 4 trail shoe"
+  },
+  "terraventure-5": {
+    "hero": "/shoes/terraventure-5.jpg",
+    "alt": "Topo Athletic Terraventure 5 trail shoe"
+  },
+  "phantom-4": {
+    "hero": "/shoes/phantom-4.jpg",
+    "alt": "Topo Athletic Phantom 4 running shoe"
+  },
+  "aura": {
+    "hero": "/shoes/aura.jpg",
+    "alt": "Topo Athletic Aura stability running shoe"
+  },
+  "vista": {
+    "hero": "/shoes/vista.jpg",
+    "alt": "Topo Athletic Vista max cushion trail shoe"
+  },
+  "specter-2": {
+    "hero": "/shoes/specter-2.jpg",
+    "alt": "Topo Athletic Specter 2 performance running shoe"
+  },
+  "phantom-4-wp": {
+    "hero": "/shoes/phantom-4-wp.jpg",
+    "alt": "Topo Athletic Phantom 4 WP waterproof running shoe"
+  },
+  "cyclone-3": {
+    "hero": "/shoes/cyclone-3.jpg",
+    "alt": "Topo Athletic Cyclone 3 racing shoe"
+  },
+  "terraventure-4-wp": {
+    "hero": "/shoes/terraventure-4-wp.jpg",
+    "alt": "Topo Athletic Terraventure 4 WP waterproof trail shoe"
+  },
+  "traverse": {
+    "hero": "/shoes/traverse.jpg",
+    "alt": "Topo Athletic Traverse hiking shoe"
+  },
+  "trailventure-2-wp": {
+    "hero": "/shoes/trailventure-2-wp.jpg",
+    "alt": "Topo Athletic Trailventure 2 WP hiking boot"
+  },
+  "magnifly-5": {
+    "hero": "/shoes/magnifly-5.jpg",
+    "alt": "Topo Athletic Magnifly 5 zero drop running shoe"
+  },
+  "terraventure-4": {
+    "hero": "/shoes/terraventure-4.jpg",
+    "alt": "Topo Athletic Terraventure 4 trail shoe"
+  },
+  "fli-lyte-6": {
+    "hero": "/shoes/fli-lyte-6.jpg",
+    "alt": "Topo Athletic Fli-Lyte 6 training shoe"
+  },
+  "st-6": {
+    "hero": "/shoes/st-6.jpg",
+    "alt": "Topo Athletic ST-6 minimalist running shoe"
+  },
+  "revive": {
+    "hero": "/shoes/revive.jpg",
+    "alt": "Topo Athletic Revive recovery shoe"
+  },
+  "rekovr-2": {
+    "hero": "/shoes/rekovr-2.jpg",
+    "alt": "Topo Athletic Rekovr 2 recovery shoe"
+  }
+}

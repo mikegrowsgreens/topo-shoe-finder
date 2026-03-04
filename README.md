@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Topo Athletic Shoe Finder
+
+An interactive quiz-based shoe recommendation tool for [Topo Athletic](https://topoathletic.com). Answer 6 quick questions and get matched with the ideal Topo shoe for your feet and goals.
+
+**Live:** [toposhoefinder.mikegrowsgreens.com](https://toposhoefinder.mikegrowsgreens.com)
+
+## Screenshots
+
+### Landing Page
+![Landing Page](docs/screenshots/landing.png)
+
+### Quiz
+![Quiz - Activity Selection](docs/screenshots/quiz.png)
+
+### Results
+![Results - Top Matches](docs/screenshots/results.png)
+
+## Features
+
+- **6-question quiz** covering activity, cushion, terrain, support, fit, and priorities
+- **20-shoe catalog** with specs verified against topoathletic.com
+- **Weighted scoring engine** with activity-specific matching and hard penalties for specialty shoes
+- **Mobile-friendly** full-screen quiz with smooth navigation
+- **Real product images** from Topo Athletic
+
+## Tech Stack
+
+- **Framework:** Next.js 14.2 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS 3.4
+- **State Management:** Zustand
+- **Deployment:** DigitalOcean, Caddy, PM2
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/
+  finder/
+    [step]/page.tsx    # Quiz step pages (dynamic routing)
+    results/page.tsx   # Results page with matched shoes
+  page.tsx             # Landing page
+components/
+  ResultCard.tsx       # Shoe result card component
+data/
+  catalog.json         # Full 20-shoe catalog with specs
+  images.json          # Image path mappings
+lib/
+  matching-engine.ts   # Scoring algorithm
+  questions.ts         # Quiz question definitions
+  store.ts             # Zustand state management
+scripts/
+  update-catalog.ts    # Auto-update scraper for catalog maintenance
+```
 
-## Learn More
+## Build & Deploy
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+```
