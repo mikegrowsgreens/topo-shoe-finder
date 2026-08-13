@@ -6,8 +6,14 @@ import ResultCard from "@/components/ResultCard";
 import ComparisonTable from "@/components/ComparisonTable";
 import { useQuizStore } from "@/lib/store";
 import { matchShoes } from "@/lib/matching-engine";
+import { activityLabel, whyParagraph } from "@/lib/labels";
 import { ScoredShoe, Shoe } from "@/lib/types";
 import catalog from "@/data/catalog.json";
+
+function humanize(value: string | null): string {
+  if (!value) return "—";
+  return value === "not_sure" ? "Not sure" : value.replace(/_/g, " ");
+}
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -44,7 +50,7 @@ export default function ResultsPage() {
         <div className="text-center">
           <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-white/30 border-t-teal" role="status" aria-label="Finding your matches" />
           <p className="text-xl font-bold text-white">Finding your perfect match...</p>
-          <p className="mt-1 text-white/60">Analyzing 20 models against your preferences</p>
+          <p className="mt-1 text-white/60">Analyzing the Topo lineup against your answers</p>
         </div>
       </div>
     );
@@ -95,16 +101,18 @@ export default function ResultsPage() {
           <h2 className="mb-4 text-2xl font-extrabold tracking-tight text-white md:text-3xl">
             Why These Matches?
           </h2>
-          <p className="text-base leading-relaxed text-white/70">
-            Our matching algorithm scored each shoe against your activity type, cushion preference,
-            terrain needs, support requirements, and priorities. Every Topo shoe features a signature
-            anatomical toe box and low 5mm drop for natural foot mechanics.
-          </p>
+          <p className="text-base leading-relaxed text-white/70">{whyParagraph(answers)}</p>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {[
-              { label: "Activity", value: answers.activity },
-              { label: "Cushion", value: answers.cushion },
-              { label: "Support", value: answers.support },
+              { label: "Activity", value: answers.activity ? activityLabel[answers.activity] : "—" },
+              { label: "Cushion", value: humanize(answers.cushion) },
+              {
+                label: answers.activity === "everyday" || answers.activity === "recovery" ? "Fit" : "Support",
+                value:
+                  answers.activity === "everyday" || answers.activity === "recovery"
+                    ? humanize(answers.fit)
+                    : humanize(answers.support),
+              },
             ].map((item) => (
               <div key={item.label} className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
                 <span className="text-xs font-medium uppercase tracking-wide text-teal">{item.label}</span>

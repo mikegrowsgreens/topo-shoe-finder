@@ -1,6 +1,7 @@
 "use client";
 
 import { ScoredShoe } from "@/lib/types";
+import { useCaseLabel } from "@/lib/labels";
 import images from "@/data/images.json";
 
 interface ResultCardProps {
@@ -29,16 +30,26 @@ const rankConfig = {
 };
 
 export default function ResultCard({ result }: ResultCardProps) {
-  const { shoe, rank, matchReasons } = result;
+  const { shoe, rank, matchReasons, skipIf, selectedVariant, crossSell } = result;
   const config = rankConfig[rank];
   const imageData = images[shoe.id as keyof typeof images];
+
+  // A waterproof answer resolves to the WP variant of the winning model —
+  // the card presents ONE shoe, with the variant swapped in when selected.
+  const displayName = selectedVariant ? selectedVariant.name : shoe.name;
+  const pdpMens = selectedVariant ? selectedVariant.pdpMens : shoe.pdpMens;
+  const pdpWomens = selectedVariant ? selectedVariant.pdpWomens : shoe.pdpWomens;
+  const weightOz = selectedVariant ? selectedVariant.weightOz : shoe.weightOz;
+  const unselectedWpVariant = !selectedVariant
+    ? (shoe.variants ?? []).find((v) => v.type === "waterproof")
+    : undefined;
 
   return (
     <div className={`flex flex-col overflow-hidden rounded-2xl bg-white shadow-lg ${config.ringClass} transition-all hover:shadow-xl`}>
       {/* Colored header bar */}
       <div className={`${config.headerBg} px-5 py-3 flex items-center justify-between`}>
         <span className="text-sm font-bold text-white uppercase tracking-wide">
-          {config.label}
+          {crossSell ? "Bonus Pick" : config.label}
         </span>
         <span className="text-xs font-medium text-white/70 uppercase tracking-wide">
           {shoe.category === "road" ? "Road" : "Trail"}
@@ -58,16 +69,16 @@ export default function ResultCard({ result }: ResultCardProps) {
         </div>
 
         {/* Name & Description — fixed height so cards align below */}
-        <h3 className="text-2xl font-extrabold tracking-tight text-navy">{shoe.name}</h3>
+        <h3 className="text-2xl font-extrabold tracking-tight text-navy">{displayName}</h3>
         <p className="mt-1 min-h-[3rem] text-sm leading-relaxed text-warm-gray-600">{shoe.description}</p>
 
         {/* Spec Grid — fixed height cells */}
         <div className="mt-4 grid grid-cols-2 gap-2">
           {[
             { label: "Stack", value: shoe.stack },
-            { label: "Drop", value: shoe.drop },
-            { label: "Weight", value: shoe.weight },
-            { label: "Best For", value: shoe.bestFor },
+            { label: "Drop", value: `${shoe.dropMm}mm` },
+            { label: "Weight", value: `${weightOz} oz` },
+            { label: "Best For", value: useCaseLabel[shoe.useCases[0]] ?? shoe.category },
           ].map((spec) => (
             <div key={spec.label} className="flex h-14 flex-col justify-center rounded-lg bg-warm-gray-50 px-3 py-2">
               <span className="text-xs font-medium uppercase tracking-wide text-warm-gray-400">{spec.label}</span>
@@ -88,23 +99,46 @@ export default function ResultCard({ result }: ResultCardProps) {
           ))}
         </ul>
 
+        {/* Honest "skip it if" note */}
+        {skipIf && (
+          <p className="mt-3 rounded-lg bg-warm-gray-50 px-3 py-2 text-xs leading-relaxed text-warm-gray-500">
+            <span className="font-bold uppercase tracking-wide text-warm-gray-400">Skip it if </span>
+            {skipIf.replace(/^skip it if\s*/i, "")}
+          </p>
+        )}
+
+        {/* Waterproof variant availability note */}
+        {unselectedWpVariant && (
+          <p className="mt-2 text-xs text-warm-gray-500">
+            Also available:{" "}
+            <a
+              href={unselectedWpVariant.pdpMens}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-teal underline-offset-2 hover:underline"
+            >
+              waterproof version
+            </a>
+          </p>
+        )}
+
         {/* CTA Buttons — always pinned to bottom */}
         <div className="mt-5 flex gap-2">
           <a
-            href={shoe.pdpMens}
+            href={pdpMens}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 rounded-xl bg-teal px-4 py-3 text-center font-bold text-white transition-all hover:bg-teal-dark hover:shadow-md active:scale-[0.98]"
-            aria-label={`View ${shoe.name} Men's`}
+            aria-label={`View ${displayName} Men's`}
           >
             Shop Men&apos;s
           </a>
           <a
-            href={shoe.pdpWomens}
+            href={pdpWomens}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 rounded-xl border-2 border-navy px-4 py-3 text-center font-bold text-navy transition-all hover:bg-navy hover:text-white hover:shadow-md active:scale-[0.98]"
-            aria-label={`View ${shoe.name} Women's`}
+            aria-label={`View ${displayName} Women's`}
           >
             Shop Women&apos;s
           </a>

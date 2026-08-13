@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Topo Athletic Shoe Finder",
   description:
-    "Find your perfect Topo Athletic shoe in 60 seconds. Answer 6 quick questions and get personalized recommendations.",
+    "Find your perfect Topo Athletic shoe in 60 seconds. Answer a few quick questions and get personalized recommendations.",
   openGraph: {
     title: "Topo Athletic Shoe Finder",
     description: "Find your perfect Topo Athletic shoe in 60 seconds.",

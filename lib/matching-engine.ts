@@ -1,108 +1,100 @@
-import { Shoe, QuizAnswers, ScoredShoe } from "./types";
+import { Activity, QuizAnswers, ScoredShoe, Shoe, ShoeVariant, UseCase } from "./types";
 
-// Shoes that should ONLY appear for specific activities
-const RECOVERY_SHOES = ["revive", "rekovr-2"];
-const HIKING_SHOES = ["trailventure-2-wp", "traverse"];
-const MINIMALIST_SHOES = ["st-6"];
+/**
+ * Matching architecture (filter-then-rank, per industry consensus):
+ *   Stage 1 — Gates: activity hard-filters the catalog to a pool; "wide" fit
+ *             hard-filters to wide-available models when enough survive.
+ *   Stage 2 — Weighted scoring within the surviving pool only.
+ *   Stage 3 — Diversity: top 3 must differ on cushion or primary use case;
+ *             short pools are completed with a labeled cross-sell.
+ *   Stage 4 — Variant resolution: a waterproof priority selects the WP variant
+ *             of a winning model — variants never compete as separate results.
+ */
+
+// ——— Stage 1: gates ———
+
+function gatePool(catalog: Shoe[], answers: QuizAnswers): Shoe[] {
+  if (!answers.activity) return catalog;
+  let pool = catalog.filter((s) => s.activities.includes(answers.activity as Activity));
+
+  // Wide width is a need, not a taste — hard filter when it leaves real choice.
+  if (answers.fit === "wide") {
+    const wide = pool.filter((s) => s.features.wideAvailable);
+    if (wide.length >= 3) pool = wide;
+  }
+  return pool;
+}
+
+// ——— Stage 2: weighted scoring within the pool ———
+
+const ADJACENT_CUSHION: Record<string, string[]> = {
+  max: ["balanced"],
+  balanced: ["max", "firmer"],
+  firmer: ["balanced"],
+};
+
+// Which use cases each quiz intent rewards (activity gate already passed).
+const USE_CASE_AFFINITY: Record<Activity, Partial<Record<UseCase, number>>> = {
+  road_run: { daily: 10, tempo_race: 4, long_distance: 4, natural_minimal: 2 },
+  trail_run: { daily: 6, long_distance: 6, tempo_race: 4 },
+  hike: { backpacking: 10, all_day_comfort: 6, long_distance: 4 },
+  everyday: { all_day_comfort: 10, post_activity: 6, gym_training: 4, daily: 2 },
+  recovery: { post_activity: 10, all_day_comfort: 4 },
+};
 
 function scoreShoe(shoe: Shoe, answers: QuizAnswers): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
 
-  // ——— Hard penalties: specialty shoes that don't match the activity ———
+  // Use-case affinity within the gated pool
   if (answers.activity) {
-    // Recovery shoes should only surface for recovery/walk
-    if (RECOVERY_SHOES.includes(shoe.id) && answers.activity !== "recovery" && answers.activity !== "walk") {
-      return { score: -100, reasons: [] };
-    }
-    // Hiking boots should only surface for hiking/walk
-    if (HIKING_SHOES.includes(shoe.id) && answers.activity !== "hike" && answers.activity !== "walk") {
-      return { score: -100, reasons: [] };
-    }
-    // Minimalist shoes shouldn't appear for walk/recovery/hike
-    if (MINIMALIST_SHOES.includes(shoe.id) && (answers.activity === "walk" || answers.activity === "recovery" || answers.activity === "hike")) {
-      return { score: -100, reasons: [] };
+    const affinity = USE_CASE_AFFINITY[answers.activity];
+    for (const uc of shoe.useCases) {
+      score += affinity[uc] ?? 0;
     }
   }
 
-  // ——— Activity match (30 points) ———
-  if (answers.activity) {
-    const activityCategoryMap: Record<string, string[]> = {
-      road: ["road"],
-      trail: ["trail"],
-      hike: ["trail"],
-      walk: ["road"],
-      recovery: ["road"],
-    };
-    const matchCategories = activityCategoryMap[answers.activity] || [];
-    if (matchCategories.includes(shoe.category)) {
-      score += 30;
-      reasons.push(`Designed for ${shoe.category} ${answers.activity === "hike" ? "& hiking" : "running"}`);
-    }
-
-    // Activity-specific bonuses
-    if (answers.activity === "recovery" && shoe.bestFor === "recovery") {
-      score += 20;
-      reasons.push("Purpose-built for post-activity recovery");
-    }
-    if (answers.activity === "hike") {
-      if (shoe.bestFor.includes("hiking") || shoe.bestFor.includes("thru-hiking")) {
-        score += 15;
-        reasons.push("Built specifically for hiking");
-      }
-    }
-    if (answers.activity === "road") {
-      // Bonus for true running shoes (daily trainers, tempo, racing)
-      if (shoe.bestFor.includes("daily") || shoe.bestFor.includes("running")) {
-        score += 5;
-        reasons.push("Versatile daily runner");
-      }
-      if (shoe.bestFor.includes("tempo") || shoe.bestFor.includes("racing")) {
-        score += 5;
-      }
-    }
-    if (answers.activity === "trail") {
-      if (shoe.bestFor.includes("trail") && !shoe.bestFor.includes("hiking")) {
-        score += 5;
-      }
-    }
-    if (answers.activity === "walk" && (shoe.bestFor.includes("walking") || shoe.bestFor === "recovery")) {
-      score += 10;
-      reasons.push("Great for walking comfort");
-    }
-  }
-
-  // ——— Cushion match (25 points) ———
-  if (answers.cushion) {
+  // Cushion preference (25 exact / 12 adjacent; "not sure" scores nothing)
+  if (answers.cushion && answers.cushion !== "not_sure") {
     if (shoe.cushion === answers.cushion) {
       score += 25;
-      reasons.push(`${shoe.cushion === "max" ? "Maximum" : shoe.cushion === "balanced" ? "Balanced" : "Firm, responsive"} cushioning`);
-    } else if (
-      (answers.cushion === "max" && shoe.cushion === "balanced") ||
-      (answers.cushion === "balanced" && shoe.cushion === "max") ||
-      (answers.cushion === "firmer" && shoe.cushion === "balanced")
-    ) {
+      reasons.push(
+        shoe.cushion === "max"
+          ? "Maximum cushioning, just like you asked for"
+          : shoe.cushion === "balanced"
+            ? "Balanced cushioning with ground feel — your pick"
+            : "Firm, responsive ride — the ground feel you wanted"
+      );
+    } else if (ADJACENT_CUSHION[answers.cushion]?.includes(shoe.cushion)) {
       score += 12;
     }
   }
 
-  // ——— Terrain match (20 points) ———
-  if (answers.terrain) {
+  // Terrain detail (20 exact / 10 partial for mixed)
+  if (answers.terrain && answers.terrain !== "not_sure") {
     if (shoe.terrain.includes(answers.terrain)) {
       score += 20;
-      reasons.push(`Built for ${answers.terrain} terrain`);
+      if (answers.terrain === "technical") {
+        reasons.push("Handles the rocky, technical terrain you run");
+      } else if (answers.terrain === "mixed") {
+        reasons.push("Built for the mixed surfaces you cover");
+      }
     } else if (answers.terrain === "mixed" && shoe.terrain.length > 1) {
       score += 10;
     }
   }
 
-  // ——— Support match (15 points) ———
-  if (answers.support) {
+  // Support (15 exact / 7 neutral↔guidance)
+  if (answers.support && answers.support !== "not_sure") {
     if (shoe.support === answers.support) {
       score += 15;
-      reasons.push(
-        `${shoe.support === "neutral" ? "Neutral" : shoe.support === "guidance" ? "Guided" : "Maximum"} support`
-      );
+      if (answers.support !== "neutral") {
+        reasons.push(
+          shoe.support === "max"
+            ? "Maximum stability for the support you need"
+            : "Gentle guidance for mild overpronation"
+        );
+      }
     } else if (
       (answers.support === "guidance" && shoe.support === "neutral") ||
       (answers.support === "neutral" && shoe.support === "guidance")
@@ -111,61 +103,166 @@ function scoreShoe(shoe: Shoe, answers: QuizAnswers): { score: number; reasons: 
     }
   }
 
-  // ——— Priorities bonus (10 points each, max 20) ———
-  if (answers.priorities && answers.priorities.length > 0) {
-    for (const priority of answers.priorities) {
-      if (priority === "durability" && (shoe.terrain.includes("technical") || shoe.benefits.some(b => b.toLowerCase().includes("durable")))) {
-        score += 10;
-        reasons.push("Built for durability on tough terrain");
+  // Everyday-branch context
+  if (answers.activity === "everyday" && answers.context) {
+    if (answers.context === "on_feet_all_day") {
+      if (shoe.cushion === "max") score += 10;
+      if (shoe.useCases.includes("all_day_comfort")) {
+        score += 5;
+        reasons.push("Made for long days on your feet");
       }
-      if (priority === "light") {
-        const weightNum = parseFloat(shoe.weight);
-        if (weightNum < 9) {
-          score += 10;
-          reasons.push(`Ultra-lightweight at ${shoe.weight}`);
-        } else if (weightNum < 10) {
-          score += 6;
-          reasons.push(`Lightweight at ${shoe.weight}`);
-        }
-      }
-      if (priority === "apma" && shoe.benefits.some(b => b.toLowerCase().includes("apma"))) {
-        score += 10;
-        reasons.push("APMA accepted for foot health");
-      }
-      if (priority === "waterproof" && shoe.benefits.some(b => b.toLowerCase().includes("waterproof"))) {
-        score += 10;
-        reasons.push("Waterproof protection for wet conditions");
-      }
-      if (priority === "zerodrop" && shoe.drop === "0mm") {
-        score += 10;
-        reasons.push("Zero-drop design for natural foot position");
-      }
+    }
+    if (answers.context === "walks_errands" && shoe.useCases.includes("all_day_comfort")) {
+      score += 5;
+      reasons.push("Easy comfort for daily walks and errands");
+    }
+    if (answers.context === "gym_mixed" && shoe.useCases.includes("gym_training")) {
+      score += 10;
+      reasons.push("Versatile enough for the gym and everything after");
     }
   }
 
-  // ——— Walk/recovery bonus for comfort features ———
-  if (answers.activity === "walk" || answers.activity === "recovery") {
-    if (shoe.cushion === "max") score += 10;
-    if (shoe.support === "max" || shoe.support === "guidance") score += 5;
+  // Fit: wide is gated above; "roomy" is every Topo's selling point (messaging, not score)
+
+  // Priorities (10 each, max 2 selections)
+  for (const priority of answers.priorities ?? []) {
+    switch (priority) {
+      case "durability":
+        if (shoe.features.rockPlate || shoe.features.vibram) {
+          score += 10;
+          reasons.push("Rugged build that lasts — you said durability matters");
+        }
+        break;
+      case "light":
+        if (shoe.weightOz < 9) {
+          score += 10;
+          reasons.push(`Ultra-light at ${shoe.weightOz} oz — you wanted lightweight`);
+        } else if (shoe.weightOz < 10) {
+          score += 6;
+        }
+        break;
+      case "apma":
+        if (shoe.features.apma) {
+          score += 10;
+          reasons.push("APMA accepted — the foot-health seal you asked about");
+        }
+        break;
+      case "waterproof":
+        // Small bonus only — the variant resolver (stage 4) does the real work,
+        // so base + WP versions never compete for separate result slots.
+        if (shoe.features.waterproof || hasWaterproofVariant(shoe)) {
+          score += 8;
+        }
+        break;
+      case "zerodrop":
+        if (shoe.features.zeroDrop) {
+          score += 10;
+          reasons.push("Zero-drop platform for the natural feel you want");
+        }
+        break;
+    }
   }
 
   return { score, reasons };
 }
 
+// ——— Stage 3: diversity ———
+
+function primaryUseCase(shoe: Shoe): UseCase | undefined {
+  return shoe.useCases[0];
+}
+
+function differsFrom(shoe: Shoe, picks: Shoe[]): boolean {
+  return picks.every(
+    (p) => p.cushion !== shoe.cushion || primaryUseCase(p) !== primaryUseCase(shoe)
+  );
+}
+
+// ——— Stage 4: variant resolution ———
+
+function hasWaterproofVariant(shoe: Shoe): boolean {
+  return (shoe.variants ?? []).some((v) => v.type === "waterproof");
+}
+
+function resolveVariant(shoe: Shoe, answers: QuizAnswers): ShoeVariant | undefined {
+  if (!answers.priorities?.includes("waterproof")) return undefined;
+  return (shoe.variants ?? []).find((v) => v.type === "waterproof");
+}
+
+// ——— Assembly ———
+
+const RANKS = ["best", "great", "good"] as const;
+
 export function matchShoes(answers: QuizAnswers, catalog: Shoe[]): ScoredShoe[] {
-  const scored = catalog.map((shoe) => {
-    const { score, reasons } = scoreShoe(shoe, answers);
-    return { shoe, score, reasons };
+  const pool = gatePool(catalog, answers);
+
+  const ranked = pool
+    .map((shoe) => ({ shoe, ...scoreShoe(shoe, answers) }))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.shoe.popularity - b.shoe.popularity ||
+        a.shoe.name.localeCompare(b.shoe.name)
+    );
+
+  // Greedy diverse top 3: each pick must differ from previous picks on
+  // cushion or primary use case; fall back to next-best if impossible.
+  const picks: typeof ranked = [];
+  for (const candidate of ranked) {
+    if (picks.length === 0 || differsFrom(candidate.shoe, picks.map((p) => p.shoe))) {
+      picks.push(candidate);
+      if (picks.length === 3) break;
+    }
+  }
+  for (const candidate of ranked) {
+    if (picks.length === 3) break;
+    if (!picks.includes(candidate)) picks.push(candidate);
+  }
+
+  const results: ScoredShoe[] = picks.map((item, index) => {
+    const selectedVariant = resolveVariant(item.shoe, answers);
+    const reasons = [...item.reasons];
+    if (selectedVariant) {
+      reasons.unshift("Waterproof version — picked because weather protection matters to you");
+    } else if (item.shoe.features.waterproof && answers.priorities?.includes("waterproof")) {
+      reasons.unshift("Fully waterproof — the protection you asked for");
+    }
+    if (answers.fit === "roomy" && reasons.length < 3) {
+      reasons.push("Anatomical toe box gives your toes the room you want");
+    }
+    return {
+      shoe: item.shoe,
+      score: item.score,
+      rank: RANKS[index],
+      matchReasons: reasons.slice(0, 3).length > 0 ? reasons.slice(0, 3) : [`A strong ${item.shoe.category} match for your answers`],
+      skipIf: item.shoe.skipIf,
+      selectedVariant,
+    };
   });
 
-  scored.sort((a, b) => b.score - a.score);
+  // Short pool (e.g. recovery has 2 shoes): complete the shortlist with a
+  // clearly-labeled cross-sell instead of leaving an empty slot.
+  if (results.length < 3 && answers.activity) {
+    const crossSellActivity: Activity = answers.activity === "recovery" ? "everyday" : "recovery";
+    const usedIds = new Set(results.map((r) => r.shoe.id));
+    const crossSell = catalog
+      .filter((s) => !usedIds.has(s.id) && s.activities.includes(crossSellActivity))
+      .sort((a, b) => a.popularity - b.popularity)[0];
+    if (crossSell) {
+      results.push({
+        shoe: crossSell,
+        score: 0,
+        rank: RANKS[results.length],
+        matchReasons:
+          crossSellActivity === "recovery"
+            ? ["For after the miles — slip on when the workout's done"]
+            : ["An everyday companion to round out your rotation"],
+        skipIf: crossSell.skipIf,
+        selectedVariant: resolveVariant(crossSell, answers),
+        crossSell: true,
+      });
+    }
+  }
 
-  const top3 = scored.slice(0, 3);
-
-  return top3.map((item, index) => ({
-    shoe: item.shoe,
-    score: item.score,
-    rank: index === 0 ? "best" : index === 1 ? "great" : "good",
-    matchReasons: item.reasons.length > 0 ? item.reasons.slice(0, 3) : [`Great ${item.shoe.category} option`],
-  }));
+  return results;
 }

@@ -13,6 +13,7 @@
  *   npm install -D tsx cheerio node-fetch@3
  */
 
+process.exit(console.error("This script predates the 2026-08 base-model/variant schema redesign. Rewrite before running — it will clobber data/catalog.json with the old schema.") ?? 1);
 import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";

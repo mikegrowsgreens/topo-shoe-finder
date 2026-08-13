@@ -4,12 +4,8 @@ import { useRouter, useParams } from "next/navigation";
 import { useCallback, useRef, useEffect } from "react";
 import QuizQuestionComponent from "@/components/QuizQuestion";
 import { useQuizStore } from "@/lib/store";
-import { questions } from "@/lib/questions";
+import { getQuestionPath, stepLabelFor } from "@/lib/questions";
 import { QuizAnswers } from "@/lib/types";
-
-const TOTAL_STEPS = 6;
-
-const stepLabels = ["Activity", "Cushion", "Terrain", "Support", "Fit", "Priorities"];
 
 export default function QuizStepPage() {
   const router = useRouter();
@@ -19,7 +15,10 @@ export default function QuizStepPage() {
 
   const { answers, setAnswer } = useQuizStore();
 
-  const question = questions.find((q) => q.step === stepNum);
+  // The path is dynamic: it depends on the chosen activity branch.
+  const path = getQuestionPath(answers);
+  const totalSteps = path.length;
+  const question = path[stepNum - 1];
 
   const goNext = useCallback(() => {
     // Reset body styles before navigating away
@@ -27,7 +26,10 @@ export default function QuizStepPage() {
     const footer = document.querySelector("footer");
     if (footer) (footer as HTMLElement).style.display = "";
 
-    if (stepNum < TOTAL_STEPS) {
+    // Recompute the path from the store at navigation time — answering Q1
+    // may have just switched branches (and thus the path length).
+    const freshPath = getQuestionPath(useQuizStore.getState().answers);
+    if (stepNum < freshPath.length) {
       router.push(`/finder/${stepNum + 1}`);
     } else {
       router.push("/finder/results");
@@ -83,7 +85,7 @@ export default function QuizStepPage() {
     };
   }, []);
 
-  if (!question || stepNum < 1 || stepNum > TOTAL_STEPS) {
+  if (!question || stepNum < 1 || stepNum > totalSteps) {
     router.push("/finder");
     return null;
   }
@@ -96,14 +98,17 @@ export default function QuizStepPage() {
     ? (answers.priorities || []).length > 0
     : currentValue !== null && currentValue !== undefined;
 
-  const progressPercent = (stepNum / TOTAL_STEPS) * 100;
+  const progressPercent = (stepNum / totalSteps) * 100;
+  const isLastStep = stepNum === totalSteps;
+  const prevLabel = stepNum > 1 ? stepLabelFor[path[stepNum - 2].id] : "";
+  const nextLabel = stepNum < totalSteps ? stepLabelFor[path[stepNum].id] : "";
 
   return (
     <div className="relative flex min-h-[calc(100dvh-57px)] flex-col bg-[#363A4A]">
       {/* Progress Bar */}
       <div className="shrink-0 px-6 pt-4">
         <p className="mb-2 text-center text-xs font-medium uppercase tracking-widest text-white/50">
-          {stepLabels[stepNum - 1]}
+          {stepLabelFor[question.id]}
         </p>
         <div className="mx-auto h-2 max-w-2xl overflow-hidden rounded-full bg-white/10">
           <div
@@ -126,7 +131,7 @@ export default function QuizStepPage() {
               <svg className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
-              <span className="text-xs font-medium">{stepLabels[stepNum - 2]}</span>
+              <span className="text-xs font-medium">{prevLabel}</span>
               <span className="text-[10px] text-white/30">Back</span>
             </button>
           )}
@@ -147,9 +152,9 @@ export default function QuizStepPage() {
                 onClick={goNext}
                 disabled={!hasSelection}
                 className="inline-flex items-center gap-2 rounded-lg bg-teal px-8 py-3 text-base font-semibold text-white transition-all hover:bg-teal-dark disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label={stepNum === TOTAL_STEPS ? "See my results" : "Continue"}
+                aria-label={isLastStep ? "See my results" : "Continue"}
               >
-                {stepNum === TOTAL_STEPS ? "See My Results" : "Continue"}
+                {isLastStep ? "See My Results" : "Continue"}
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
@@ -176,12 +181,12 @@ export default function QuizStepPage() {
 
         {/* Side Nav: Next */}
         <div className="hidden w-24 shrink-0 md:flex md:flex-col md:items-end md:pr-4">
-          {stepNum < TOTAL_STEPS && (
+          {stepNum < totalSteps && (
             <div className="flex flex-col items-end text-white/30">
               <svg className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
-              <span className="text-xs font-medium">{stepLabels[stepNum]}</span>
+              <span className="text-xs font-medium">{nextLabel}</span>
               <span className="text-[10px]">Next</span>
             </div>
           )}

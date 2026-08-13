@@ -19,7 +19,7 @@ export default function FinderLanding() {
           </h1>
 
           <p className="mx-auto mt-5 max-w-md text-base text-white/50 md:text-lg">
-            Answer 6 quick questions and we&apos;ll match you with the ideal Topo Athletic shoe
+            Answer a few quick questions and we&apos;ll match you with the ideal Topo Athletic shoe
             for your feet and your goals.
           </p>
 
